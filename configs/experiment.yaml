@@ -1,0 +1,29 @@
+embedding:
+  model_name: sentence-transformers/all-MiniLM-L6-v2
+  device: cpu
+
+eval:
+  # None => full dataset
+  max_rows: null
+  max_evidence_sentences: 64
+
+energy:
+  top_k: 12
+  rank_r: 8
+
+policies:
+  strict:
+    accept: 0.20
+    review: 0.35
+  standard:
+    accept: 0.35
+    review: 0.55
+  editorial:
+    accept: 0.55
+    review: 0.75
+
+viz:
+  rolling_window: 200
+
+cuts:
+  top_n: 50

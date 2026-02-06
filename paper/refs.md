@@ -1,0 +1,2 @@
+- FEVEROUS: Fact Extraction and Verification Over Unstructured and Structured Data
+- Verity: Deterministic Evidence Gating for AI Systems

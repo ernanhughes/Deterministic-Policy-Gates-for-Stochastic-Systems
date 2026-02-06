@@ -1,0 +1,13 @@
+policies:
+  wikipedia.standard:
+    description: >
+      Accept claims only if supported by evidence
+      with low hallucination energy.
+    similarity_threshold: 0.72
+    max_energy: 0.35
+
+  wikipedia.strict:
+    description: >
+      Strict editorial policy.
+    similarity_threshold: 0.80
+    max_energy: 0.25
