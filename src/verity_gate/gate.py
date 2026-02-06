@@ -1,5 +1,5 @@
 from verity_gate.energy.hallucination import hallucination_energy_svd
-from verity_gate.policy import apply_policy
+from verity_gate.policy import apply_policy, apply_adaptive_policy
 import numpy as np
 
 
@@ -8,30 +8,41 @@ def evaluate_claim(
     evidence_vecs,
     regime: str,
     *,
-    oracle_vec: np.ndarray | None = None,
+    embedder=None,
+    evidence_texts=None,
     **energy_kwargs,
 ):
-    """
-    Returns:
-        base_result      : EnergyResult
-        decision         : str
-        probe_energies   : list[float]
-        oracle_energy    : float | None
-        energy_gap       : float | None
-    """
-
-    # --------------------------------------------------
-    # 1) Base computation (main claim energy)
-    # --------------------------------------------------
+    # -------------------------------
+    # 1) Base energy
+    # -------------------------------
     base = hallucination_energy_svd(
         claim_vec,
         evidence_vecs,
         **energy_kwargs,
     )
 
-    # --------------------------------------------------
-    # 2) Robustness probe (hyperparameter sensitivity)
-    # --------------------------------------------------
+    # -------------------------------
+    # 2) Oracle / control energy
+    # -------------------------------
+    oracle_energy = None
+    if embedder is not None and evidence_texts:
+        control_claim = evidence_texts[0]
+        control_vec = embedder.embed([control_claim])[0]
+
+        oracle = hallucination_energy_svd(
+            control_vec,
+            evidence_vecs,
+            **energy_kwargs,
+        )
+        oracle_energy = oracle.energy
+
+    energy_gap = None
+    if oracle_energy is not None:
+        energy_gap = base.energy - oracle_energy
+
+    # -------------------------------
+    # 3) Robustness probe
+    # -------------------------------
     probe = []
     for k in (8, 12, 20):
         r = hallucination_energy_svd(
@@ -43,26 +54,22 @@ def evaluate_claim(
         )
         probe.append(r.energy)
 
-    # --------------------------------------------------
-    # 3) Deterministic policy decision
-    # --------------------------------------------------
-    decision = apply_policy(base.energy, regime)
+    # -------------------------------
+    # 4) Decisions
+    # -------------------------------
+    decision_fixed = apply_policy(base.energy, regime)
 
-    # --------------------------------------------------
-    # 4) Oracle energy + energy gap (NEW)
-    # --------------------------------------------------
-    oracle_energy = None
-    energy_gap = None
+    decision_adaptive = apply_adaptive_policy(
+        energy=base.energy,
+        oracle_energy=oracle_energy,
+        regime=regime,
+    )
 
-    if oracle_vec is not None:
-        oracle = hallucination_energy_svd(
-            oracle_vec,
-            evidence_vecs,
-            top_k=energy_kwargs.get("top_k", 12),
-            rank_r=energy_kwargs.get("rank_r", 8),
-            return_debug=False,
-        )
-        oracle_energy = oracle.energy
-        energy_gap = base.energy - oracle_energy
-
-    return base, decision, probe, oracle_energy, energy_gap
+    return (
+        base,
+        decision_fixed,
+        decision_adaptive,
+        probe,
+        oracle_energy,
+        energy_gap,
+    )

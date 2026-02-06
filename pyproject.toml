@@ -22,6 +22,10 @@ dependencies = [
     "seaborn",
     "sentence-transformers",
     "pyyaml",
+    "torch",
+    "transformers",
+    "tqdm",
+    "datasets",
 ]
 
 [tool.setuptools]
