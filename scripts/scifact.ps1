@@ -1,0 +1,11 @@
+python .\scripts\gate_suite.py `
+  --kind gate_jsonl `
+  --in_path .\datasets\scifact\scifact_smoke_100.jsonl `
+  --n 500 --seed 1337 `
+  --cal_frac 0.5 `
+  --far 0.01 `
+  --neg_mode deranged `
+  --out_report .\artifacts\scifact_negcal.json `
+  --out_scored_pos .\artifacts\scifact_scored_pos.jsonl `
+  --out_scored_neg .\artifacts\scifact_scored_neg.jsonl `
+  --plot_png .\artifacts\scifact_sep.png
