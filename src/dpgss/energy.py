@@ -3,6 +3,172 @@ import numpy as np
 from scipy.linalg import svd
 from .types import EnergyResult
 
+def evaluate_claim(
+    claim_vec: np.ndarray,
+    evidence_vecs: np.ndarray,
+    *,
+    regime: str,
+    top_k: int,
+    rank_r: int,
+) -> Tuple[EnergyResult, str, List[float]]:
+    base = hallucination_energy_svd(claim_vec, evidence_vecs, top_k=top_k, rank_r=rank_r)
+
+    # Robustness probe (same idea you had)
+    probe = []
+    for k in (8, 12, 20):
+        kk = max(1, min(int(k), int(evidence_vecs.shape[0])))
+        r = hallucination_energy_svd(claim_vec, evidence_vecs, top_k=kk, rank_r=rank_r)
+        probe.append(float(r.energy))
+
+    decision_fixed = apply_policy(base.energy, regime)
+    return base, decision_fixed, probe
+
+
+def apply_policy(energy: float, regime: str, delta: float = 0.10) -> str:
+    tau = float(POLICIES[regime])
+    if energy <= tau:
+        return "accept"
+    if energy <= tau + float(delta):
+        return "review"
+    return "reject"
+
+
+POLICIES = {
+    "editorial": 0.55,
+    "standard": 0.45,
+    "strict": 0.30,
+}
+
+def hallucination_energy_svd(
+    claim_vec: np.ndarray,
+    evidence_vecs: np.ndarray,
+    *,
+    top_k: int = 12,
+    rank_r: int = 8,
+    return_debug: bool = True,
+) -> EnergyResult:
+    if claim_vec is None or evidence_vecs is None:
+        return EnergyResult(
+            energy=1.0,
+            explained=0.0,
+            identity_error=1.0,
+            topk=int(top_k),
+            rank_r=int(rank_r),
+            effective_rank=0,
+            sv=None,
+            topk_scores=None,
+            used_count=0,
+        )
+
+    c = _unit_norm(np.asarray(claim_vec, dtype=np.float32))
+
+    E = np.asarray(evidence_vecs, dtype=np.float32)
+    if E.ndim != 2 or E.shape[0] == 0:
+        return EnergyResult(
+            energy=1.0,
+            explained=0.0,
+            identity_error=1.0,
+            topk=int(top_k),
+            rank_r=int(rank_r),
+            effective_rank=0,
+            sv=None,
+            topk_scores=None,
+            used_count=0,
+        )
+
+    E = _unit_norm_rows(E)
+
+    U_r, S, idx = build_evidence_basis(c, E, top_k=top_k, rank_r=rank_r)
+
+    if U_r.shape[1] == 0:
+        return EnergyResult(
+            energy=1.0,
+            explained=0.0,
+            identity_error=1.0,
+            topk=int(top_k),
+            rank_r=int(rank_r),
+            effective_rank=0,
+            sv=None,
+            topk_scores=None,
+            used_count=0,
+        )
+
+    proj_coords = U_r.T @ c
+    explained = float(np.dot(proj_coords, proj_coords))
+    energy = 1.0 - explained
+
+    explained = max(0.0, min(1.0, explained))
+    energy = max(0.0, min(1.0, energy))
+
+    identity_error = abs(1.0 - (explained + energy))
+    effective_rank = int(np.sum(S > 1e-6))
+
+    if not return_debug:
+        return EnergyResult(
+            energy=energy,
+            explained=explained,
+            identity_error=identity_error,
+            topk=int(top_k),
+            rank_r=int(rank_r),
+            effective_rank=effective_rank,
+            sv=None,
+            topk_scores=None,
+            used_count=int(len(idx)),
+        )
+
+    scores = cosine_scores(c, E)
+    topk_scores = scores[idx].tolist() if idx.size else []
+    sv_list = S.tolist() if S.size else []
+
+    return EnergyResult(
+        energy=energy,
+        explained=explained,
+        identity_error=identity_error,
+        topk=int(top_k),
+        rank_r=int(rank_r),
+        effective_rank=effective_rank,
+        sv=sv_list,
+        topk_scores=topk_scores,
+        used_count=int(len(idx)),
+    )
+
+def cosine_scores(c: np.ndarray, E: np.ndarray) -> np.ndarray:
+    # c: (d,) unit, E: (n,d) unit rows
+    return (E @ c).astype(np.float32)
+
+
+def build_evidence_basis(
+    c: np.ndarray,
+    E: np.ndarray,
+    *,
+    top_k: int,
+    rank_r: int,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Returns (U_r, S)
+      - U_r: (d, r) orthonormal basis vectors (columns)
+      - S: singular values
+    """
+    if E.size == 0:
+        return np.zeros((c.shape[0], 0), dtype=np.float32), np.array([], dtype=np.float32)
+
+    top_k = max(1, int(top_k))
+    rank_r = max(1, int(rank_r))
+
+    scores = cosine_scores(c, E)
+    k = min(top_k, E.shape[0])
+    idx = np.argsort(-scores)[:k]
+    E_k = E[idx]  # (k,d)
+
+    # Thin SVD: E_k = U * diag(S) * Vt
+    _, S, Vt = np.linalg.svd(E_k, full_matrices=False)
+
+    r_full = Vt.shape[0]
+    r = min(rank_r, r_full)
+    U_r = Vt[:r].T  # (d,r)
+
+    return U_r.astype(np.float32), S.astype(np.float32)
+
 def _unit_norm(x: np.ndarray, eps: float = 1e-12) -> np.ndarray:
     """Normalize 1D vector. Rejects (1,d) shapes."""
     x = np.asarray(x, dtype=np.float32)

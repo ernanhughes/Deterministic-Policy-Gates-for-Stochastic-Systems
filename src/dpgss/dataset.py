@@ -7,43 +7,82 @@ import random
 from .cache import FeverousCache  # Circular import guard - place in separate module
 
 
-def load_feverous_samples(
-    in_path: Path,
-    cache_db: Path,
+def load_examples(
+    kind: str,
+    path: Path,
     n: int,
     seed: int,
-    model: str = "sentence-transformers/all-MiniLM-L6-v2",
+    *,
+    cache: Optional[FeverousCache] = None,
+    model: str = "",
     include_context: bool = True,
     require_complete: bool = True,
-) -> List[Tuple[str, List[str]]]:
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """Load (claim, evidence-set) pairs.
+
+    For FEVEROUS, if `cache` is provided, evidence strings are resolved from the cache DB
+    and evidence embeddings are pulled from the cache (so energy is computed on real text,
+    not on element-id strings).
     """
-    Production-grade loader using FeverousCache for complete evidence resolution.
-    
-    Use this when you need fully resolved evidence text (not just context snippets).
-    Requires pre-built cache DB from feverous_cache_build.py.
-    """
-    cache = FeverousCache(cache_db)
-    try:
-        # Reuse your existing load_feverous_pairs logic here
-        pairs, _ = load_feverous_pairs(
-            in_path,
+    rng = random.Random(seed)
+    out: List[Dict[str, Any]] = []
+    stats: Dict[str, Any] = {}
+
+    if kind == "feverous":
+        rows, st = load_feverous_pairs(
+            path,
             cache=cache,
             model=model,
             include_context=include_context,
             require_complete=require_complete,
         )
-        
-        # Convert to (claim, evidence) tuples
-        samples = [
-            (p["claim"].strip(), p["evidence"])
-            for p in pairs
-            if p.get("claim") and p.get("evidence")
-        ]
-        
-        random.Random(seed).shuffle(samples)
-        return samples[:min(n, len(samples))]
-    finally:
-        cache.close()
+        stats = st
+
+        rng.shuffle(rows)
+        for r in rows:
+            claim = r.get("claim")
+            ev = r.get("evidence")
+            if not isinstance(claim, str) or not claim.strip() or not isinstance(ev, list) or not ev:
+                continue
+            ev = stable_unique([str(x).strip() for x in ev if str(x).strip()])
+            if not ev:
+                continue
+            ex = {
+                "claim": claim.strip(),
+                "evidence": ev,
+                "label": r.get("label"),
+                "id": r.get("id"),
+                "evidence_set": r.get("evidence_set"),
+            }
+            if "evidence_vecs" in r:
+                ex["evidence_vecs"] = r["evidence_vecs"]
+            out.append(ex)
+            if len(out) >= n:
+                break
+        return out, stats
+
+    if kind == "jsonl":
+        rows = list(iter_jsonl(path))
+        rng.shuffle(rows)
+
+        claim_keys = ["claim", "claim_text", "text"]
+        evidence_keys = ["evidence_texts", "rationale", "rationale_texts", "evidence_sentence_texts", "evidence_text"]
+
+        for r in rows:
+            claim = _pick_first_str(r, claim_keys)
+            ev = _pick_evidence_list(r, evidence_keys)
+            if not claim or not ev:
+                continue
+            ev = stable_unique([str(x).strip() for x in ev if str(x).strip()])
+            if not ev:
+                continue
+            out.append({"claim": claim, "evidence": ev, "label": r.get("label")})
+            if len(out) >= n:
+                break
+        return out, stats
+
+    raise ValueError("kind must be: feverous | jsonl")
+
 
 def load_feverous_pairs(
     path: Path,
@@ -116,6 +155,12 @@ def load_feverous_pairs(
 
     return pairs, stats
 
+def load_feverous(path: Path) -> Iterator[Dict]:
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            if line.strip():
+                yield json.loads(line)
+
 def _iter_evidence_sets(example: Dict[str, Any]) -> Iterable[Dict[str, Any]]:
     ev = example.get("evidence", [])
     if isinstance(ev, dict):
@@ -146,6 +191,16 @@ def required_ids_for_evidence_set(evidence_set: Dict[str, Any], include_context:
     all_ids = [str(x) for x in content_ids] + [str(x) for x in ctx_ids]
     return _stable_unique(all_ids)
 
+# -----------------------------------------------------------------------------
+# IO + dataset adapters
+# -----------------------------------------------------------------------------
+def iter_jsonl(path: Path) -> Iterable[dict]:
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                yield json.loads(line)
+
 def _stable_unique(xs: Iterable[str]) -> List[str]:
     seen: set[str] = set()
     out: List[str] = []
@@ -156,9 +211,32 @@ def _stable_unique(xs: Iterable[str]) -> List[str]:
     return out
 
 
-def load_feverous(path: Path) -> Iterator[Dict]:
-    with open(path, "r", encoding="utf-8") as f:
-        for line in f:
-            if line.strip():
-                yield json.loads(line)
 
+def stable_unique(xs: List[str]) -> List[str]:
+    seen = set()
+    out = []
+    for x in xs:
+        if x not in seen:
+            out.append(x)
+            seen.add(x)
+    return out
+
+
+def _pick_first_str(row: dict, keys: List[str]) -> Optional[str]:
+    for k in keys:
+        v = row.get(k)
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+    return None
+
+
+def _pick_evidence_list(row: dict, keys: List[str]) -> Optional[List[str]]:
+    for k in keys:
+        v = row.get(k)
+        if isinstance(v, list) and v:
+            out = [str(x).strip() for x in v if str(x).strip()]
+            if out:
+                return out
+        if isinstance(v, str) and v.strip():
+            return [v.strip()]
+    return None

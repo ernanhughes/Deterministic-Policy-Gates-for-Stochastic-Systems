@@ -12,6 +12,7 @@ from typing import Optional
 import numpy as np
 
 # Your new class architecture
+from dpgss.cache import FeverousCache
 from dpgss.embedder import HFEmbedder
 from dpgss.energy import HallucinationEnergyComputer
 from dpgss.oracle import OracleValidator
@@ -20,24 +21,24 @@ from dpgss.gate import VerifiabilityGate
 from dpgss.calibration import AdaptiveCalibrator
 from dpgss.audit import AuditLogger
 from dpgss.adversarial import (
-    DerangedGenerator, OffsetGenerator, CyclicGenerator,
-    PermuteGenerator, HardMinedGenerator, AdversarialClaimGenerator
+    DerangedPairGenerator, OffsetPairGenerator, CyclicPairGenerator,
+    PermutePairGenerator, HardMinedPairGenerator, AdversarialPairGenerator
 )
-from dpgss.dataset import load_feverous_samples
+from dpgss.dataset import load_examples
 from dpgss.plot import plot_distributions
 
-def get_adversarial_generator(mode: str, **kwargs) -> AdversarialClaimGenerator:
+def get_adversarial_generator(mode: str, **kwargs) -> AdversarialPairGenerator:
     """Factory for negative calibration modes."""
     if mode == "deranged":
-        return DerangedGenerator()
+        return DerangedPairGenerator()
     elif mode == "offset":
-        return OffsetGenerator(offset=int(kwargs.get("neg_offset", 37)))
+        return OffsetPairGenerator(offset=int(kwargs.get("neg_offset", 37)))
     elif mode == "cyclic":
-        return CyclicGenerator()
+        return CyclicPairGenerator()
     elif mode == "permute":
-        return PermuteGenerator()
+        return PermutePairGenerator()
     elif mode == "hard_mined":
-        return HardMinedGenerator()
+        return HardMinedPairGenerator()
     else:
         raise ValueError(f"Unknown neg_mode: {mode}")
 
@@ -63,47 +64,65 @@ def run_gate_suite(
     np.random.seed(seed)
     
     # 1. Load data
-    samples = load_feverous_samples(in_path, n=n, seed=seed, model=model_name, cache_db=cache_db)  # Returns [(claim, evidence_list), ...]
+    cache = FeverousCache(cache_db)
+    samples, load_stats = load_examples(
+        "feverous",
+        in_path,
+        n,
+        seed,
+        cache=cache,
+        model=model_name,
+    )
+    if len(samples) < 50:
+        raise RuntimeError(f"Too few usable examples ({len(samples)}). Check input format/evidence extraction.")
+    claim_vec_cache = {}
+
     cal_n = int(len(samples) * cal_frac)
-    eval_n = len(samples) - cal_n
-    
     cal_samples = samples[:cal_n]
-    eval_samples = samples[cal_n:cal_n + eval_n]
+    eval_samples = samples[cal_n:]
     
     # 2. Build gate
     embedder = HFEmbedder(model_name=model_name)
     energy_computer = HallucinationEnergyComputer(top_k=12, rank_r=8)
-    oracle_validator = OracleValidator(max_allowed_energy=0.01)  # CRITICAL: rejects trivial oracles
+    oracle_validator = OracleValidator(max_allowed_energy=0.01)
     gate = VerifiabilityGate(embedder, energy_computer, oracle_validator)
     
-    # 3. Calibrate adaptive policy
-    calibrator = AdaptiveCalibrator(gate)
-    cal_claims = [c for c, _ in cal_samples]
-    cal_evidence = [e for _, e in cal_samples]
+    # 3. Calibrate adaptive policy using NEGATIVE CONTROL ENERGIES
+    calibrator = AdaptiveCalibrator(gate, embedder=embedder)
     
+    # ✅ FIXED: Extract claims/evidence from dicts (not tuple unpacking)
+    cal_claims = [sample["claim"] for sample in cal_samples]
+    cal_evidence = [sample["evidence"] for sample in cal_samples]
+    cal_evidence_vecs = [sample["evidence_vecs"] for sample in cal_samples]
+
     sweep_results = calibrator.run_sweep(
         claims=cal_claims,
         evidence_sets=cal_evidence,
-        percentiles=[int(far * 100)],  # e.g., FAR=0.01 → P1
-        oracle_claims=None  # Uses evidence[0] as oracle
+        evidence_vecs=cal_evidence_vecs,
+        percentiles=[int(far * 100)],
+        neg_mode=neg_mode,
+        neg_offset=neg_offset or 37,
+        seed=seed,
+        claim_vec_cache=claim_vec_cache
     )
-    
-    # Validate oracle quality BEFORE proceeding (your "too good" safeguard)
-    oracle_valid_rate = sweep_results["oracle_validity_rate"]
-    if oracle_valid_rate < 0.95:
-        print(
-            f"⚠️  Oracle validity rate too low ({oracle_valid_rate:.1%})! "
-            "Your evidence may be incoherent or oracle construction broken. "
-            "This is GOOD — it means your gate isn't trivially accepting everything."
-        )
-    
-    # 4. Get policy
+
+    # 4. Get policy calibrated on NEGATIVE energies
     tau = sweep_results["tau_by_percentile"][int(far * 100)]
-    policy = AdaptivePercentilePolicy(percentile=int(far * 100), calibration_energies=sweep_results["energy_gaps"])
+    print(f"Calibrated tau for FAR={far:.2%}: {tau:.4f}")
+    print(f"Separation delta: {sweep_results['separation_delta']:.3f} "
+          f"(pos mean={np.mean(sweep_results['pos_energies']):.3f}, "
+          f"neg mean={np.mean(sweep_results['neg_energies']):.3f})")
     
+    policy = AdaptivePercentilePolicy(
+        percentile=int(far * 100),
+        calibration_energies=sweep_results["neg_energies"]
+    )    
+
     # 5. Evaluate POSITIVE samples
     pos_results = []
-    for claim, evidence in eval_samples:
+    for sample in eval_samples:  # ✅ FIXED: iterate over dicts
+        claim = sample["claim"]
+        evidence = sample["evidence"]
         try:
             result = gate.evaluate(claim, evidence, policy)
             pos_results.append(result)
@@ -111,23 +130,28 @@ def run_gate_suite(
             print(f"⚠️  Skipping POS sample due to error: {e}")
             continue
     
-    # 6. Generate NEGATIVE samples via adversarial transformation
+    # 6. Generate NEGATIVE samples via adversarial PAIR transformation
     adv_gen = get_adversarial_generator(neg_mode, neg_offset=neg_offset)
+
+    neg_pairs, neg_meta = adv_gen.generate(
+        pairs=eval_samples,
+        seed=seed,
+        embedder=embedder,   # required for hard_mined
+        offset=neg_offset or 1,
+    )
+
     neg_results = []
-    for claim, evidence in eval_samples:
-        adv_claim = adv_gen.transform(claim, evidence, seed=seed)
+    for pair in neg_pairs:
         try:
-            result = gate.evaluate(adv_claim, evidence, policy)
+            result = gate.evaluate(pair["claim"], pair["evidence"], policy)
             neg_results.append(result)
         except Exception as e:
             print(f"⚠️  Skipping NEG sample due to error: {e}")
-            continue
     
-    # 7. Write outputs
+    # 7-9. Outputs, report, plot (unchanged - already correct)
     AuditLogger.write_evaluation_dump(pos_results, out_pos_scored)
     AuditLogger.write_evaluation_dump(neg_results, out_neg_scored)
     
-    # 8. Generate report
     pos_summary = AuditLogger.generate_summary_report(pos_results)
     neg_summary = AuditLogger.generate_summary_report(neg_results)
     
@@ -142,7 +166,6 @@ def run_gate_suite(
             "seed": seed
         },
         "calibration": sweep_results,
-        "oracle_validity_rate": oracle_valid_rate,  # CRITICAL METRIC FOR YOUR CONCERN
         "positive_samples": pos_summary,
         "negative_samples": neg_summary,
         "separation": {
@@ -156,21 +179,32 @@ def run_gate_suite(
     with open(out_report, 'w', encoding='utf-8') as f:
         json.dump(report, f, indent=2)
     
-    # 9. Plot (optional - reuse your existing viz code)
     if plot_png:
         plot_distributions(
             pos_energies=[r.energy_result.energy for r in pos_results],
             neg_energies=[r.energy_result.energy for r in neg_results],
             title=f"FEVEROUS | {neg_mode} | FAR={far}",
-            out_path=plot_png
-        )
-    
-    # FINAL SAFETY CHECK: Print oracle validity to console
-    print(f"\n✅ Oracle validity rate: {oracle_valid_rate:.1%}")
-    if oracle_valid_rate > 0.99:
-        print("⚠️  WARNING: Oracle validity near 100% — your gate may be trivially accepting. Check energy distributions!")
+            out_path=plot_png,
+            tau=tau  # Pass calibrated tau for visualization
+        )    
+
+def resolve_vectors(sample, embedder, claim_cache):
+    claim = sample["claim"]
+
+    # ---- CLAIM VECTOR (cached) ----
+    if claim in claim_cache:
+        claim_vec = claim_cache[claim]
     else:
-        print("✅ Gate is non-trivial (oracle energy > 0.01 in some samples)")
+        claim_vec = embedder.embed([claim])[0]
+        claim_cache[claim] = claim_vec
+
+    # ---- EVIDENCE VECTORS (authoritative) ----
+    if "evidence_vecs" in sample and sample["evidence_vecs"] is not None:
+        evidence_vecs = sample["evidence_vecs"]
+    else:
+        evidence_vecs = embedder.embed(sample["evidence"])
+
+    return claim_vec, evidence_vecs
 
 
 def main():

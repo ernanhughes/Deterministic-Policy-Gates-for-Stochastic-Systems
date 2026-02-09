@@ -1,5 +1,6 @@
+# src/dpgss/gate.py
 from typing import List, Optional
-from .types import EvaluationResult
+from .types import EnergyResult, EvaluationResult, OracleCalibration
 from .embedder import Embedder
 from .energy import HallucinationEnergyComputer
 from .oracle import OracleValidator
@@ -16,6 +17,28 @@ class VerifiabilityGate:
         self.energy_computer = energy_computer
         self.oracle_validator = oracle_validator or OracleValidator()
     
+    def compute_energy(
+        self,
+        claim: str,
+        evidence_texts: List[str]
+    ) -> EnergyResult:
+        """
+        Compute hallucination energy WITHOUT policy decision.
+        Used for calibration/sweeping — no dummy policy needed.
+        """
+        # Embed claim (flatten to 1D vector)
+        claim_vec_raw = self.embedder.embed([claim])  # Returns (1, d)
+        if claim_vec_raw.shape[0] == 1:
+            claim_vec = claim_vec_raw[0]  # Flatten to (d,)
+        else:
+            raise ValueError(f"Unexpected claim embedding shape: {claim_vec_raw.shape}")
+        
+        # Embed evidence
+        ev_vecs = self.embedder.embed(evidence_texts)  # (n, d)
+        
+        # Compute and return raw energy
+        return self.energy_computer.compute(claim_vec, ev_vecs)
+    
     def evaluate(
         self,
         claim: str,
@@ -24,13 +47,13 @@ class VerifiabilityGate:
         oracle_claim: Optional[str] = None
     ) -> EvaluationResult:
         # 1. Embed with STRICT shape handling
-        claim_vec_raw = self.embedder.embed([claim])  # Returns (1, d)
+        claim_vec_raw = self.embedder.embed([claim])
         if claim_vec_raw.shape[0] == 1:
-            claim_vec = claim_vec_raw[0]  # CRITICAL: flatten to (d,)
+            claim_vec = claim_vec_raw[0]
         else:
             raise ValueError(f"Unexpected claim embedding shape: {claim_vec_raw.shape}")
         
-        ev_vecs = self.embedder.embed(evidence_texts)  # (n, d)
+        ev_vecs = self.embedder.embed(evidence_texts)
         
         # 2. Compute base energy
         base_energy = self.energy_computer.compute(claim_vec, ev_vecs)
@@ -46,7 +69,7 @@ class VerifiabilityGate:
                 energy_computer=self.energy_computer
             )
         
-        # 4. Robustness probe (NOW EXISTS)
+        # 4. Robustness probe
         probe = self.energy_computer.compute_robustness_probe(claim_vec, ev_vecs)
         
         # 5. Policy decision
@@ -60,4 +83,4 @@ class VerifiabilityGate:
             verdict=verdict,
             policy_applied=policy.name,
             robustness_probe=probe
-        )
+        ) 
