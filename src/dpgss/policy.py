@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
-from .types import EnergyResult, Verdict
+from .custom_types import EnergyResult, Verdict
 import numpy as np
 
 class Policy(ABC):

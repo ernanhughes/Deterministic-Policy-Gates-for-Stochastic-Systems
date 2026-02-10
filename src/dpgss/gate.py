@@ -1,6 +1,6 @@
 # src/dpgss/gate.py
 from typing import List, Optional
-from .types import EnergyResult, EvaluationResult
+from .custom_types import EnergyResult, EvaluationResult
 from .embedder import Embedder
 from .energy import HallucinationEnergyComputer
 from .policy import Policy

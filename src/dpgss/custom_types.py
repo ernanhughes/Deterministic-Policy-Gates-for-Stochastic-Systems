@@ -16,11 +16,10 @@ class EnergyResult:
     identity_error: float  # |1 - (explained + energy)| - numerical stability check
     topk: int              # evidence vectors used
     rank_r: int            # subspace rank used
-    effective_rank: int    # actual rank from SVD
+    effective_rank: int    # actual rank from SVD (computed in _build_evidence_basis)
     used_count: int        # evidence vectors actually available
     sensitivity: float = 0.0
-    entropy_rank: float = 0.0 
-
+    entropy_rank: float = 0.0
 
     def is_stable(self, threshold: float = 1e-4) -> bool:
         return self.identity_error < threshold
@@ -30,15 +29,18 @@ class EvaluationResult:
     """Complete evaluation outcome."""
     claim: str
     evidence: List[str]
-    energy_result: EnergyResult
+    energy_result: EnergyResult  # ← Contains effective_rank (no duplication needed)
     verdict: Verdict
     policy_applied: str
     robustness_probe: Optional[List[float]] = None  # Energy under param variations
     
     def to_dict(self) -> Dict[str, Any]:
+        """Serialize for JSONL output — exposes structural diagnostics."""
         return {
             "claim": self.claim[:120] + "..." if len(self.claim) > 120 else self.claim,
             "energy": self.energy_result.energy,
+            "effective_rank": self.energy_result.effective_rank,  # ← CRITICAL: Expose SVD rank
+            "explained": self.energy_result.explained,             # Optional but useful
             "verdict": self.verdict.value,
             "policy": self.policy_applied,
             "is_stable": self.energy_result.is_stable(),

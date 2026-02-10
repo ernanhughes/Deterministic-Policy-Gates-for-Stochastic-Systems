@@ -3,7 +3,8 @@ $env:TRANSFORMERS_VERBOSITY = "error"
 # ---- config (edit once) ----
 $DATA    = "E:\data\feverous_dev_complete.jsonl"
 $CACHEDB = "E:\data\feverous_cache.db"
-$MODEL   = "sentence-transformers/all-MiniLM-L6-v2"
+# $MODEL   = "sentence-transformers/all-MiniLM-L6-v2"
+$MODEL = "BAAI/bge-large-en-v1.5"
 $REGIME  = "standard"
 $FAR     = "0.01"
 $CALFRAC = "0.5"
@@ -51,6 +52,8 @@ py scripts\validate_gate_artifacts.py `
   --cache_db $CACHEDB `
   --model $MODEL `
   --strict
+
+
 
 Write-Host ""
 Write-Host "DONE. Run folder: $OUTDIR"

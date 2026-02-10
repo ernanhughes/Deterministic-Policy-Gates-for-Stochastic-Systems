@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 from typing import List, Dict
-from .types import EvaluationResult, Verdict
+from .custom_types import EvaluationResult, Verdict
 import numpy as np
 
 class AuditLogger:

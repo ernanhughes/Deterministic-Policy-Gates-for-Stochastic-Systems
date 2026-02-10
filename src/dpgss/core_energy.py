@@ -1,7 +1,7 @@
 from typing import List, Tuple
 import numpy as np
 from .energy import HallucinationEnergyComputer
-from .types import EnergyResult
+from .custom_types import EnergyResult
 
 def compute_energy_core(
     *,

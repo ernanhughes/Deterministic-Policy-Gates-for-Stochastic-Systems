@@ -1,7 +1,7 @@
 from typing import Tuple, List
 import numpy as np
 from scipy.linalg import svd
-from .types import EnergyResult
+from .custom_types import EnergyResult
 
 
 class HallucinationEnergyComputer:
