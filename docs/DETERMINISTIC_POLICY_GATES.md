@@ -1,4 +1,4 @@
-## 1️⃣ Enhanced Worked Example (Drop-In Ready)
+# 1️⃣ Worked Example
 
 This example is designed to be:
 

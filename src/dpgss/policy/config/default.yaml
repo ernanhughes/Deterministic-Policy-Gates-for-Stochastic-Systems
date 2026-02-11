@@ -1,0 +1,26 @@
+difficulty:
+  # Difficulty index is a normalized policy construct, not a learned variable.
+  # Each component ∈ [0,1]; weights sum to 1.0 (equal-order prior).
+
+  weights:
+    evidence_sparsity: 0.25        # Few evidence atoms → high difficulty
+    rank_collapse:     0.25        # Low effective rank → weak structure
+    sensitivity:       0.20        # Brittleness under leave-one-out
+    robustness:        0.15        # Instability under parameter variation
+    hard_negative_gap: 0.15        # Adversarial regime indicator
+
+  thresholds:
+    low:  0.40   # Below this, problem considered structurally easy
+    high: 0.75   # Above this, problem considered intrinsically hard
+
+policy:
+  # Energy-relative margins are expressed as fractions of tau
+  margin_fraction: 0.10
+
+  effectiveness:
+    min_accept: 0.25
+    min_review: 0.05
+
+  actions:
+    high_difficulty: reject
+    ambiguous: review

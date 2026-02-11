@@ -15,6 +15,7 @@ class Embedder(ABC):
         pass
 
 class HFEmbedder(Embedder):
+    name: str = "HFEmbedder"
     def __init__(self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2"):
         self.model = SentenceTransformer(model_name)
         # Suppress harmless warning about position_ids

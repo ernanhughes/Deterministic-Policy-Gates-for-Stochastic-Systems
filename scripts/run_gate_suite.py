@@ -8,14 +8,17 @@ import json
 import random
 from pathlib import Path
 from typing import Optional
+from time import time
 
 import numpy as np
+import uuid
 
 # Your new class architecture
 from dpgss.cache import FeverousCache
 from dpgss.embedder import HFEmbedder
 from dpgss.energy import HallucinationEnergyComputer
-from dpgss.policy import AdaptivePercentilePolicy
+from dpgss.policy.policy import AdaptivePercentilePolicy
+from dpgss.policy.difficulty import DEFAULT_THRESHOLDS, DEFAULT_WEIGHTS, DifficultyIndex
 from dpgss.gate import VerifiabilityGate
 from dpgss.calibration import AdaptiveCalibrator
 from dpgss.audit import AuditLogger
@@ -63,6 +66,8 @@ def run_gate_suite(
     neg_offset: Optional[int] = None,
     plot_png: Optional[Path] = None,
 ):
+    run_id = str(uuid.uuid4())
+
     # Determinism
     random.seed(seed)
     np.random.seed(seed)
@@ -90,7 +95,15 @@ def run_gate_suite(
     ensure_vectors(samples, embedder)  
 
     energy_computer = HallucinationEnergyComputer(top_k=12, rank_r=8)
-    gate = VerifiabilityGate(embedder, energy_computer)
+
+    difficulty_cfg = {
+        "difficulty": {
+            "weights": DEFAULT_WEIGHTS,
+            "thresholds": DEFAULT_THRESHOLDS,
+        }
+    }
+    difficulty = DifficultyIndex(cfg=difficulty_cfg)  # Use defaults for now; can be extended to load from config
+    gate = VerifiabilityGate(embedder, energy_computer, difficulty)
     
     # 3. Calibrate adaptive policy using NEGATIVE CONTROL ENERGIES
     calibrator = AdaptiveCalibrator(gate, embedder=embedder)
@@ -129,7 +142,7 @@ def run_gate_suite(
         claim = sample["claim"]
         evidence = sample["evidence"]
         try:
-            result = gate.evaluate(claim, evidence, policy)
+            result = gate.evaluate(claim, evidence, policy, run_id=run_id)
             pos_results.append(result)
         except Exception as e:
             print(f"⚠️  Skipping POS sample due to error: {e}")
@@ -148,12 +161,28 @@ def run_gate_suite(
     neg_results = []
     for pair in neg_pairs:
         try:
-            result = gate.evaluate(pair["claim"], pair["evidence"], policy)
+            result = gate.evaluate(pair["claim"], pair["evidence"], policy, run_id=run_id)
             neg_results.append(result)
         except Exception as e:
             print(f"⚠️  Skipping NEG sample due to error: {e}")
     
     # 7-9. Outputs, report, plot (unchanged - already correct)
+    AuditLogger.write_run_header(
+        out_report,
+        {
+            "run_id": run_id,
+            "timestamp": time(),
+            "model": model_name,
+            "embedding": {
+                "backend": "huggingface",
+                "model": model_name,
+            },
+            "difficulty_config": difficulty_cfg,
+            "policy": policy.name,
+            "neg_mode": neg_mode,
+            "seed": seed,
+        }
+    )
     AuditLogger.write_evaluation_dump(pos_results, out_pos_scored)
     AuditLogger.write_evaluation_dump(neg_results, out_neg_scored)
     

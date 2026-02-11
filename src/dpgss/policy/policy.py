@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from dpgss.difficulty import DifficultyMetrics
-from .custom_types import EnergyResult, Verdict
+from dpgss.custom_types import EnergyResult, Verdict
 import numpy as np
 
 
@@ -10,12 +9,13 @@ class Policy(ABC):
     """Abstract policy interface - deterministic decision boundary."""
 
     hard_negative_gap: float = 0.0  # default, safe for fixed policies
+    tau_accept: float = 0.0  # default, safe for fixed policies
 
     @abstractmethod
     def decide(
         self,
         energy_result: EnergyResult,
-        difficulty_metrics: DifficultyMetrics,
+        difficulty_value: float,
         effectiveness_score: float,
     ) -> Verdict:
         pass
@@ -40,7 +40,7 @@ class FixedThresholdPolicy(Policy):
     def decide(
         self,
         energy_result: EnergyResult,
-        difficulty_metrics: DifficultyMetrics,
+        difficulty_value: float,
         effectiveness_score: float,
     ) -> Verdict:
         if energy_result.energy <= self.tau_accept:
@@ -71,7 +71,6 @@ class AdaptivePercentilePolicy(Policy):
         self.tau_review = self.tau_accept * 1.25
         self.hard_negative_gap = float(hard_negative_gap)
 
-
     @property
     def name(self) -> str:
         return f"adaptive.P{self.percentile}"
@@ -79,15 +78,26 @@ class AdaptivePercentilePolicy(Policy):
     def decide(
         self,
         energy_result: EnergyResult,
-        difficulty_metrics: DifficultyMetrics,
+        difficulty_value: float,
         effectiveness_score: float,
     ) -> Verdict:
-        if difficulty_metrics.difficulty_score > 0.7:
+        energy = energy_result.energy
+        tau = self.tau_accept
+        margin = 0.1 * tau  # policy margin band
+
+        # Region C: Unsafe
+        if (
+            difficulty_value > 0.75
+            or energy > self.tau_review
+            or effectiveness_score < 0.05
+        ):
             return Verdict.REJECT
 
-        if effectiveness_score < 0.1:
-            return Verdict.REVIEW  # Route ambiguity to human judgment
+        # Region B: Hard / ambiguous
+        if difficulty_value > 0.4 or abs(energy - tau) <= margin:
+            return Verdict.REVIEW
 
+        # Region A: Safe
         return Verdict.ACCEPT
 
 

@@ -38,3 +38,27 @@ class AuditLogger:
                 "unstable_count": sum(1 for r in results if not r.energy_result.is_stable())
             }
         }
+    
+    @staticmethod
+    def write_run_header(path: Path, header: Dict):
+        with open(path.with_suffix(".meta.json"), "w") as f:
+            json.dump(header, f, indent=2)
+
+    @staticmethod
+    def generate_pathology_report(results):
+        return {
+            "high_energy_low_difficulty": sum(
+                1 for r in results
+                if r.energy_result.energy > 0.6 and r.difficulty_value < 0.3
+            ),
+            "low_energy_high_difficulty": sum(
+                1 for r in results
+                if r.energy_result.energy < 0.4 and r.difficulty_value > 0.7
+            ),
+            "review_due_to_margin": sum(
+                1 for r in results
+                if r.verdict == Verdict.REVIEW and abs(
+                    r.energy_result.energy - r.decision_trace["tau_accept"]
+                ) < r.decision_trace["margin_band"]
+            )
+        }
