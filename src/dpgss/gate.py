@@ -1,5 +1,6 @@
 # src/dpgss/gate.py
 from typing import List, Optional
+from dpgss.policy.decision_trace import DecisionTrace
 
 from dpgss.policy.difficulty import DifficultyIndex
 from dpgss.policy.difficulty_metrics import DifficultyMetrics
@@ -97,23 +98,32 @@ class VerifiabilityGate:
             "embedding_backend": self.embedder.name,
         }
 
-        decision_trace = {
-            "energy": base.energy,
-            "tau_accept": getattr(policy, "tau_accept", None),
-            "difficulty": difficulty_value,
-            "effectiveness": effectiveness,
-            "hard_negative_gap": policy.hard_negative_gap,
-        }
+        tau_accept = policy.tau_accept
+        tau_review = policy.tau_review
+        margin = 0.1 * tau_accept
+
+
+        decision_trace = DecisionTrace(
+            energy=base.energy,
+            difficulty=difficulty_value,
+            effectiveness=effectiveness,
+            tau_accept=tau_accept,
+            tau_review=tau_review,
+            margin_band=margin,
+            policy_name=policy.name,
+            hard_negative_gap=policy.hard_negative_gap,
+            verdict=verdict.value,
+        )
 
         return EvaluationResult(
             run_id=run_id,
             claim=claim,
             evidence=evidence_texts,
+            decision_trace=decision_trace,
             embedding_info=embedding_info,
             energy_result=base,
             effectiveness=effectiveness,
             verdict=verdict,
-            decision_trace=decision_trace,
             policy_applied=policy.name,
             split=split,
             neg_mode=neg_mode,

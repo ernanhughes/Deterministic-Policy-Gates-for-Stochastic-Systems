@@ -3,6 +3,8 @@ from enum import Enum
 from typing import List, Optional, Dict, Any
 import numpy as np
 
+from dpgss.policy.decision_trace import DecisionTrace
+
 class Verdict(Enum):
     ACCEPT = "accept"
     REVIEW = "review"
@@ -44,6 +46,7 @@ class EvaluationResult:
     evidence: List[str]
 
     energy_result: EnergyResult  
+    decision_trace: DecisionTrace
     verdict: Verdict
     policy_applied: str
 
@@ -55,7 +58,8 @@ class EvaluationResult:
     effectiveness: float
 
     embedding_info: Dict
-    decision_trace: Dict
+    decision_trace: DecisionTrace
+
     neg_mode: Optional[str]
     robustness_probe: Optional[List[float]] = None  # Energy under param variations
 
@@ -76,14 +80,6 @@ class EvaluationResult:
                 "value": self.difficulty_value,
                 "bucket": self.difficulty_bucket,
             },
-
-            "decision": {
-                "verdict": self.verdict.value,
-                "policy": self.policy_applied,
-                "effectiveness": self.effectiveness,
-                **self.decision_trace,
-            },
-
             "embedding": self.embedding_info,
             "effective_rank": self.energy_result.effective_rank,  # ← CRITICAL: Expose SVD rank
             "explained": self.energy_result.explained,             # Optional but useful
@@ -97,6 +93,6 @@ class EvaluationResult:
             "difficulty_bucket": self.difficulty_bucket,
             "effectiveness": self.effectiveness,
             "embedding_info": self.embedding_info,
-            "decision_trace": self.decision_trace,
+            "decision_trace": self.decision_trace.to_dict(),
             "entropy_rank": self.energy_result.entropy_rank,
         }

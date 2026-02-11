@@ -10,6 +10,7 @@ class Policy(ABC):
 
     hard_negative_gap: float = 0.0  # default, safe for fixed policies
     tau_accept: float = 0.0  # default, safe for fixed policies
+    tau_review: Optional[float] = None  # default, safe for fixed policies
 
     @abstractmethod
     def decide(
