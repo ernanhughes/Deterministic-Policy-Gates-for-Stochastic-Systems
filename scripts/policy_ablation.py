@@ -278,6 +278,12 @@ def sweep_tpr_vs_far(pos, neg, fars, knobs):
         tprs.append(m["TPR"])
     return tprs
 
+def corr_energy_difficulty(rows, name: str):
+    e = np.array([float(r["energy"]["value"]) for r in rows], dtype=np.float32)
+    d = np.array([float(r["difficulty"]["value"]) for r in rows], dtype=np.float32)
+    c = float(np.corrcoef(e, d)[0, 1]) if len(rows) > 2 else float("nan")
+    print(f"Corr(energy,difficulty) {name}: {c:.4f}")
+
 def plot_rank_vs_energy(results, out_path: Path, title: str):
     ranks = []
     energies = []
@@ -303,6 +309,60 @@ def plot_rank_vs_energy(results, out_path: Path, title: str):
     plt.close()
 
     print(f"Saved: {out_path}")
+
+def plot_similarity_diagnostics(results, out_prefix: Path, title_prefix: str):
+    sim_margin = []
+    sim_top1 = []
+    sim_top2 = []
+    energy = []
+    rank = []
+
+    for r in results:
+        e = r["energy"]
+        energy.append(e["value"])
+        rank.append(e["support"]["effective_rank"])
+        s = r["energy"]["similarity"]
+        sim_margin.append(s.get("sim_margin", 0.0))
+        sim_top1.append(s.get("sim_top1", 0.0))
+        sim_top2.append(s.get("sim_top2", 0.0))
+
+    sim_margin = np.array(sim_margin)
+    energy = np.array(energy)
+    rank = np.array(rank)
+
+    # ---- Plot 1: sim_margin vs energy ----
+    plt.figure()
+    plt.scatter(sim_margin, energy, s=10, alpha=0.4)
+    plt.xlabel("sim_margin (top1 - top2)")
+    plt.ylabel("energy")
+    plt.title(f"{title_prefix}: sim_margin vs energy")
+    plt.savefig(out_prefix.with_name(out_prefix.name + "_margin_vs_energy.png"))
+    plt.close()
+
+    # ---- Plot 2: sim_margin vs effective_rank ----
+    plt.figure()
+    plt.scatter(sim_margin, rank, s=10, alpha=0.4)
+    plt.xlabel("sim_margin")
+    plt.ylabel("effective_rank")
+    plt.title(f"{title_prefix}: sim_margin vs rank")
+    plt.savefig(out_prefix.with_name(out_prefix.name + "_margin_vs_rank.png"))
+    plt.close()
+
+    # ---- Plot 3: sim_margin histogram ----
+    plt.figure()
+    plt.hist(sim_margin, bins=40)
+    plt.xlabel("sim_margin")
+    plt.ylabel("count")
+    plt.title(f"{title_prefix}: sim_margin distribution")
+    plt.savefig(out_prefix.with_name(out_prefix.name + "_margin_hist.png"))
+    plt.close()
+
+    # ---- Correlations ----
+    if len(sim_margin) > 1:
+        corr_energy = float(np.corrcoef(sim_margin, energy)[0, 1])
+        corr_rank = float(np.corrcoef(sim_margin, rank)[0, 1])
+        print(f"{title_prefix} correlation margin↔energy:", corr_energy)
+        print(f"{title_prefix} correlation margin↔rank:", corr_rank)
 
 
 def plot_shaded_surface(
@@ -442,9 +502,19 @@ if __name__ == "__main__":
     # Load scored JSONLs
     pos_der = load_results(run_dir /"pos_deranged.jsonl")
     neg_der = load_results(run_dir /"neg_deranged.jsonl")
+    print("POS count:", len(pos_der))
+    print("NEG count:", len(neg_der))
 
     pos_hard = load_results(run_dir /"pos_hard_mined_v2.jsonl")
     neg_hard = load_results(run_dir /"neg_hard_mined_v2.jsonl")
+
+    print("POS count:", len(pos_hard))
+    print("NEG count:", len(neg_hard))
+    
+    corr_energy_difficulty(pos_der,  "POS deranged")
+    corr_energy_difficulty(neg_der,  "NEG deranged")
+    corr_energy_difficulty(pos_hard, "POS hard_mined_v2")
+    corr_energy_difficulty(neg_hard, "NEG hard_mined_v2")
 
     # Convert to Point objects for tau calibration
     neg_der_pts = [
@@ -592,6 +662,31 @@ if __name__ == "__main__":
         run_dir / "rank_vs_energy_neg_hard_mined_v2.png",
         "NEG Hard-Mined: rank vs energy"
     )
+
+    plot_similarity_diagnostics(
+        pos_der,
+        run_dir / "pos_deranged",
+        "POS Deranged"
+    )
+
+    plot_similarity_diagnostics(
+        pos_hard,
+        run_dir / "pos_hard_mined_v2",
+        "POS Hard-Mined"
+    )
+
+    plot_similarity_diagnostics(
+        neg_der,
+        run_dir / "neg_deranged",
+        "NEG Deranged"
+    )
+
+    plot_similarity_diagnostics(
+        neg_hard,
+        run_dir / "neg_hard_mined_v2",
+        "NEG Hard-Mined"
+    )
+
 
     print("Correlation rank↔energy (deranged POS):",
         np.corrcoef(

@@ -8,7 +8,7 @@ $EMBEDDB = "E:\data\global_embeddings_test2.db"
 # $CACHEDB = "E:\data\feverous_cache_bge.db"
 # $MODEL = "BAAI/bge-large-en-v1.5"
 
-$DATA    = "datasets\scifact_dev_rationale.jsonl"
+$DATA    = "datasets\scifact\scifact_dev_rationale.jsonl"
 
 $REGIME  = "standard"
 $FAR     = "0.01"

@@ -2,11 +2,11 @@
 from typing import List, Optional
 from dpgss.policy.decision_trace import DecisionTrace
 
-from dpgss.policy.difficulty import DifficultyIndex
-from dpgss.policy.difficulty_metrics import DifficultyMetrics
 
 from dpgss.custom_types import EnergyResult, EvaluationResult
 from dpgss.energy import HallucinationEnergyComputer
+from dpgss.policy.difficulty_v2_metrics import DifficultyV2Metrics
+from dpgss.policy.difficulty_v2 import DifficultyV2, DifficultyV2Ranges
 from dpgss.protocols.embedder import Embedder
 from dpgss.policy.policy import Policy
 import numpy as np
@@ -16,7 +16,7 @@ class VerifiabilityGate:
         self,
         embedder: Embedder,
         energy_computer: HallucinationEnergyComputer,
-        difficulty_index: DifficultyIndex
+        difficulty_index: DifficultyV2
     ):
         self.embedder = embedder
         self.energy_computer = energy_computer
@@ -75,12 +75,11 @@ class VerifiabilityGate:
         robust_var = float(np.var(probe))
 
         # 5. Build metrics (data only)
-        metrics = DifficultyMetrics(
-            evidence_count=ev_vecs.shape[0],
-            effective_rank=base.effective_rank,
+        metrics = DifficultyV2Metrics(
             sensitivity=base.sensitivity,
-            robustness_variance=robust_var,
-            hard_negative_gap=policy.hard_negative_gap,
+            sim_margin=base.sim_margin,
+            evidence_count=int(ev_vecs.shape[0]),
+            effective_rank=int(base.effective_rank),
         )
 
         # 6. Compute difficulty index (scalar)

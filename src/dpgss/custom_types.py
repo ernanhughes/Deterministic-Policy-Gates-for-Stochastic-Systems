@@ -25,6 +25,10 @@ class EnergyResult:
     sensitivity: float = 0.0
     entropy_rank: float = 0.0
 
+    sim_top1: float = 0.0
+    sim_top2: float = 0.0
+    sim_margin: float = 0.0
+
     def is_stable(self, threshold: float = 1e-4) -> bool:
         return self.identity_error < threshold
 
@@ -43,6 +47,12 @@ class EnergyResult:
                 "effective_rank": self.effective_rank,
                 "used_count": self.used_count,
                 "entropy_rank": self.entropy_rank,
+            },
+
+            "similarity": {
+                "sim_top1": self.sim_top1,
+                "sim_top2": self.sim_top2,
+                "sim_margin": self.sim_margin,
             },
 
             "robustness": {

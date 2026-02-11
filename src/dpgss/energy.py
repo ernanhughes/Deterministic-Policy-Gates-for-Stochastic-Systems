@@ -59,13 +59,19 @@ class HallucinationEnergyComputer:
         identity_error = abs(1.0 - (explained + energy))
         
         # senitivity check: energy should not be negative or >1 due to numerical issues
-            # Compute similarity and select top-k evidence
+        # Compute similarity and select top-k evidence
         sims = E @ c  # (n,)
         k = min(self.top_k, E.shape[0])
         idx = np.argsort(-sims)[:k]
         E_topk = E[idx]
         sims_topk = sims[idx]
-        
+
+        sorted_sims = np.sort(sims)[::-1]
+        sim_top1 = float(sorted_sims[0])
+        sim_top2 = float(sorted_sims[1]) if len(sorted_sims) > 1 else 0.0
+        sim_margin = sim_top1 - sim_top2
+
+
         # Compute concentration metric γ
         sims_topk = np.maximum(sims_topk, 0.0)  # Ensure non-negative
         if np.sum(sims_topk) < 1e-8:
@@ -79,10 +85,15 @@ class HallucinationEnergyComputer:
             identity_error=identity_error,
             evidence_topk=min(self.top_k, E.shape[0]),
             rank_cap=self.rank_r,
+            effective_rank=effective_rank,
+            used_count=E.shape[0],
+
             sensitivity=sensitivity,
             entropy_rank=float(effective_rank) / max(1, E.shape[0]),
-            effective_rank=effective_rank,
-            used_count=E.shape[0]
+
+            sim_top1=sim_top1,
+            sim_top2=sim_top2,
+            sim_margin=sim_margin
         )
     
     def compute_robustness_probe(
