@@ -11,7 +11,7 @@ $EMBEDDB = "E:\data\global_embeddings.db"
 $DATA    = "E:\data\feverous_dev_complete.jsonl"
 
 $REGIME  = "standard"
-$FAR     = "0.01"
+$FAR     = "0.02"
 $CALFRAC = "0.5"
 $N       = "5000"
 $SEED    = "1337"

@@ -1,4 +1,4 @@
-import json
+You're just aimport json
 from pathlib import Path
 
 def read_jsonl(path: Path):

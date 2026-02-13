@@ -3,12 +3,12 @@ $env:TRANSFORMERS_VERBOSITY = "error"
 
 $CACHEDB = "E:\data\feverous_cache.db"
 $MODEL   = "sentence-transformers/all-MiniLM-L6-v2"
-$EMBEDDB = "E:\data\global_embeddings_test.db"
+$EMBEDDB = "E:\data\global_embeddings.db"
 
 # $CACHEDB = "E:\data\feverous_cache_bge.db"
 # $MODEL = "BAAI/bge-large-en-v1.5"
 
-$DATA    = "datasets/pubmedqa/pubmedqa_train.jsonl"
+$DATA    = "E:\data\hotpot.jsonl"
 
 $REGIME  = "standard"
 $FAR     = "0.02"
@@ -21,7 +21,7 @@ $OUTDIR = "artifacts\runs\$RUNID"
 New-Item -ItemType Directory -Force -Path $OUTDIR | Out-Null
 
 function Run-One($MODE, $EXTRA_ARGS) {
-  $report = "$OUTDIR\scifact_negcal_$MODE.json"
+  $report = "$OUTDIR\feverous_negcal_$MODE.json"
   $pos    = "$OUTDIR\pos_$MODE.jsonl"
   $neg    = "$OUTDIR\neg_$MODE.jsonl"
   $plot   = "$OUTDIR\$MODE.png"

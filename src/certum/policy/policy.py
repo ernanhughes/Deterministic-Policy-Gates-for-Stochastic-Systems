@@ -49,7 +49,7 @@ class AdaptivePolicy:
             return Verdict.REVIEW
 
         # Border band
-        margin = 0.1 * self.tau_accept
+        margin = 0.25 * self.tau_accept
         if abs(energy - self.tau_accept) <= margin:
             return Verdict.REVIEW
 

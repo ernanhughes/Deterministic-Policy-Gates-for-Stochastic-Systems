@@ -72,6 +72,7 @@ def load_examples(
         claim_keys = ["claim", "claim_text", "text"]
         evidence_keys = [
             "evidence_texts",
+            "evidence",
             "rationale",
             "rationale_texts",
             "evidence_sentence_texts",
