@@ -1,9 +1,11 @@
 import matplotlib
+
 matplotlib.use('Agg')  # Non-interactive backend for script use
-import matplotlib.pyplot as plt
-import numpy as np
 from pathlib import Path
 from typing import List, Optional
+
+import matplotlib.pyplot as plt
+import numpy as np
 
 
 def plot_distributions(

@@ -1,6 +1,7 @@
 # certum/protocols/calibration.py
 
-from typing import Protocol, List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional, Protocol
+
 import numpy as np
 
 

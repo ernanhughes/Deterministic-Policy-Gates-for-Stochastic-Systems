@@ -1,10 +1,13 @@
 # certum/protocols/gate.py
 
-from typing import Optional, Protocol, List
+from typing import List, Optional, Protocol
+
+import numpy as np
+
 from certum.custom_types import EnergyResult, EvaluationResult
 from certum.geometry.claim_evidence import ClaimEvidenceGeometry
 from certum.protocols.embedder import Embedder
-import numpy as np
+
 
 class Gate(Protocol):
     """

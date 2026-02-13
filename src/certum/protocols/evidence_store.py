@@ -1,6 +1,7 @@
 # certum/protocols/evidence_store.py
 
-from typing import Protocol, List, Tuple
+from typing import List, Protocol, Tuple
+
 import numpy as np
 
 

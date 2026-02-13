@@ -1,6 +1,7 @@
 # certum/protocols/embedder.py
 
-from typing import Protocol, List
+from typing import List, Protocol
+
 import numpy as np
 
 

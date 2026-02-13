@@ -1,8 +1,9 @@
 # certum/protocols/policy.py
 
-from typing import Protocol, Optional
-from certum.custom_types import Verdict
+from typing import Optional, Protocol
+
 from certum.axes.bundle import AxisBundle
+from certum.custom_types import Verdict
 
 
 class Policy(Protocol):

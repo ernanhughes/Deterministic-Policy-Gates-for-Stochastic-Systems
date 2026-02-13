@@ -1,8 +1,11 @@
 import json
 from pathlib import Path
-from typing import List, Dict
-from certum.custom_types import EvaluationResult, Verdict
+from typing import Dict, List
+
 import numpy as np
+
+from certum.custom_types import EvaluationResult, Verdict
+
 
 class AuditLogger:
     """Produces human + machine readable audit trails."""

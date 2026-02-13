@@ -1,6 +1,7 @@
 
 import numpy as np
 
+
 def compute_effectiveness_curve(
     *,
     difficulties,

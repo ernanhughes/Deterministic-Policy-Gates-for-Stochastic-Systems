@@ -1,10 +1,9 @@
-import numpy as np
 from dataclasses import dataclass
+
+import numpy as np
 
 # src/certum/difficulty/difficulty_score.py
 
-from dataclasses import dataclass
-import numpy as np
 
 
 @dataclass(frozen=True)

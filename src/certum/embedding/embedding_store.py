@@ -1,9 +1,11 @@
-import sqlite3
 import hashlib
+import sqlite3
 import time
 from pathlib import Path
 from typing import List
+
 import numpy as np
+
 
 class EmbeddingStore:
 

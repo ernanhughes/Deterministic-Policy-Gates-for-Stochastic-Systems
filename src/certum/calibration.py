@@ -1,12 +1,13 @@
 # src/certum/calibration.py
-from typing import List, Tuple, Dict, Any, Optional
-import random
-import numpy as np
 import logging
+import random
+from typing import Any, Dict, List, Optional, Tuple
 
+import numpy as np
+
+from certum.gate import VerifiabilityGate
 from certum.geometry.claim_evidence import ClaimEvidenceGeometry
 from certum.protocols.embedder import Embedder
-from certum.gate import VerifiabilityGate
 
 logger = logging.getLogger(__name__)
 

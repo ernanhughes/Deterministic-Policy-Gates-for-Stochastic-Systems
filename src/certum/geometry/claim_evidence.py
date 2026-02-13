@@ -1,8 +1,10 @@
-from typing import Tuple, List
+import logging
+from typing import List, Tuple
+
 import numpy as np
 from scipy.linalg import svd
+
 from ..custom_types import EnergyResult, GeometryDiagnostics
-import logging
 
 logger = logging.getLogger(__name__)
 

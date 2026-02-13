@@ -1,4 +1,4 @@
-from typing import Protocol, Dict, Any
+from typing import Any, Dict, Protocol
 
 
 class AxisCalculator(Protocol):

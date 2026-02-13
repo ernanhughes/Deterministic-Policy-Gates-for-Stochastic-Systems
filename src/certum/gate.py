@@ -1,15 +1,16 @@
 # src/certum/gate.py
 
-from typing import List, Optional
-import numpy as np
 import logging
+from typing import List, Optional
 
-from certum.custom_types import EnergyResult, EvaluationResult
+import numpy as np
+
 from certum.axes.bundle import AxisBundle
+from certum.custom_types import EnergyResult, EvaluationResult
 from certum.geometry.claim_evidence import ClaimEvidenceGeometry
+from certum.policy.decision_trace import DecisionTrace
 from certum.protocols.embedder import Embedder
 from certum.protocols.policy import Policy
-from certum.policy.decision_trace import DecisionTrace
 from certum.utils.math_utils import accept_margin_ratio
 
 logger = logging.getLogger(__name__)

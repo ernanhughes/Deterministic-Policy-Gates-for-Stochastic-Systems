@@ -1,7 +1,7 @@
 
 from certum.axes.bundle import AxisBundle
 from certum.custom_types import Verdict
-    
+
 
 class AdaptivePolicy:
 

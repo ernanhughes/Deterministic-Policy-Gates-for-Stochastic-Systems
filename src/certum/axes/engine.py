@@ -1,4 +1,5 @@
-from typing import List, Dict, Any, Tuple
+from typing import Any, Dict, List, Tuple
+
 from certum.protocols.axes import AxisCalculator
 
 
