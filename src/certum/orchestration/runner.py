@@ -366,6 +366,7 @@ class CertumRunner:
                 "evidence_count": embedding_info.get("evidence_count"),
 
                 # keep full nested structure for later deep dives
+                "energy": base.energy,
                 "energy_result": base.to_dict(),
             })
         return rows
