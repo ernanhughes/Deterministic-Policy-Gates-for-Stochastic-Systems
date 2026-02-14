@@ -40,7 +40,6 @@ def plot_distributions(
         raise ValueError("No valid energy values to plot")
     
     # Determine binning strategy
-    all_vals = np.concatenate([pos, neg]) if len(pos) > 0 and len(neg) > 0 else (pos if len(pos) > 0 else neg)
     bins = np.linspace(0.0, 1.0, 41)  # 40 bins across [0, 1] range
     
     # Create figure

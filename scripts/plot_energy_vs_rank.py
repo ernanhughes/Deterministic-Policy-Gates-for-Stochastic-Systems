@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 """Scatter plot: Energy (Y) vs Effective Rank (X) — works with FLAT JSONL format."""
 import json
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
-from pathlib import Path
+
 
 def load_energies(jsonl_path: Path):
     """Load ONLY energy values (flat format)."""

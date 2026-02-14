@@ -13,23 +13,23 @@ This script:
 No decision logic lives here.
 """
 
+import argparse
 import json
 from pathlib import Path
 from time import time
-import argparse
-import numpy as np
+
 import matplotlib.pyplot as plt
+import numpy as np
 from tqdm import tqdm
 
-from certum.gate import VerifiabilityGate
-from certum.policy.policy import AdaptivePolicy
-from certum.geometry.claim_evidence import ClaimEvidenceGeometry
+from certum.adversarial import get_adversarial_generator
+from certum.dataset.loader import load_examples
 from certum.embedding.hf_embedder import HFEmbedder
 from certum.embedding.sqlite_embedding_backend import SQLiteEmbeddingBackend
 from certum.evidence.sqlite_evidence_store import SQLiteEvidenceStore
-from certum.dataset.loader import load_examples
-from certum.adversarial import get_adversarial_generator
-
+from certum.gate import VerifiabilityGate
+from certum.geometry.claim_evidence import ClaimEvidenceGeometry
+from certum.policy.policy import AdaptivePolicy
 
 # =====================================================
 # Utilities

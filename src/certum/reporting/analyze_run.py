@@ -1,15 +1,13 @@
 #!/usr/bin/env python
 import json
-import numpy as np
 from pathlib import Path
+
 import matplotlib.pyplot as plt
-from sklearn.metrics import roc_curve, auc
+import numpy as np
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import auc, roc_auc_score, roc_curve
 from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-from sklearn.metrics import roc_auc_score
-
-
 
 # -------------------------------------------------------------
 # Utilities
