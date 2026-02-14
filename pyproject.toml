@@ -26,6 +26,8 @@ dependencies = [
     "transformers",
     "tqdm",
     "datasets",
+    "scikit-learn",
+    "duckdb",
 ]
 
 [tool.setuptools]

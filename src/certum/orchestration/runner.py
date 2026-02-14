@@ -11,6 +11,7 @@ from typing import Optional
 
 import numpy as np
 from tqdm import tqdm
+import hashlib
 
 from certum.adversarial import get_adversarial_generator
 from certum.calibration import AdaptiveCalibrator
@@ -23,6 +24,7 @@ from certum.policy.policy import AdaptivePolicy
 from certum.policy.policies import build_policies
 from certum.utils.math_utils import accept_margin_ratio
 from certum.utils.id_utils import compute_ids
+
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +67,9 @@ class CertumRunner:
         out_pos_scored: Path,
         out_neg_scored: Path,
         out_pos_policies: Optional[Path] = None,
-        out_neg_policies: Optional[Path] = None,        neg_offset: Optional[int] = None,
+        out_neg_policies: Optional[Path] = None,        
+        neg_offset: Optional[int] = None,
+        out_duckdb: Optional[Path] = None,
         plot_png: Optional[Path] = None,
         gap_width: float = 0.1,  
     ):
@@ -179,7 +183,7 @@ class CertumRunner:
                 )
                 pos_results.append(result)
             except Exception as e:
-                logger.warning(f"Skipping POS: {e}")
+                logger.exception("Policy sweep failed (POS). sample=%r, error=%r", type(sample), e)
 
         # -------------------------------------------------
         # 5. Generate negatives
@@ -219,7 +223,7 @@ class CertumRunner:
                 )
                 neg_results.append(result)
             except Exception as e:
-                logger.warning(f"Skipping NEG: {e}")
+                logger.exception("Policy sweep failed (POS). sample=%r, error=%r", type(sample), e)
 
         # -------------------------------------------------
         # 6. Reporting
@@ -256,6 +260,7 @@ class CertumRunner:
                 out_path=plot_png,
                 tau=sweep_results["tau_energy"],
             )
+       
 
         logger.info(f"Run completed in {time() - start_time:.2f}s")
 
@@ -275,6 +280,26 @@ class CertumRunner:
         with open(path, "w", encoding="utf-8") as f:
             for r in rows:
                 f.write(json.dumps(r, ensure_ascii=False) + "\n")
+
+
+    def _stable_sample_id(self, sample: dict) -> str:
+        """
+        Stable ID for joining across tables/files.
+        Prefer dataset-provided 'id'; otherwise hash claim+evidence.
+        """
+        sid = sample.get("id", None)
+        if sid is not None:
+            return str(sid)
+
+        claim = sample.get("claim", "") or ""
+        evidence = sample.get("evidence", []) or []
+        blob = claim + "\n" + "\n".join(map(str, evidence))
+        return hashlib.sha1(blob.encode("utf-8")).hexdigest()[:16]
+
+
+    def _row_id(self, sample_id: str, policy_name: str, split: str) -> str:
+        blob = f"{split}|{sample_id}|{policy_name}"
+        return hashlib.sha1(blob.encode("utf-8")).hexdigest()[:16]
 
     def _evaluate_policy_suite(
         self,
@@ -296,36 +321,51 @@ class CertumRunner:
             sample["evidence"],
             claim_vec=sample.get("claim_vec"),
             evidence_vecs=sample.get("evidence_vecs"),
-        )
+        ) 
+
+        pair_id, claim_id, evidence_id = compute_ids(sample["claim"], sample["evidence"])
 
         rows: list[dict] = []
-        for pol in policies_list:
-            tau = getattr(pol, "tau_accept", None)
+        for policy in policies_list:
+            tau = getattr(policy, "tau_accept", None)
             if tau is None:
                 eff = 0.0  # or None, but your Policy.decide expects a float
             else:
                 eff = accept_margin_ratio(energy=float(axes.get("energy")), tau=float(tau))
 
-            verdict = pol.decide(axes, float(eff))
-
+            verdict = policy.decide(axes, float(eff))
+            g = base.geometry
             rows.append({
                 "run_id": run_id,
                 "split": split,
-                "id": sample.get("id"),
-                "policy_name": pol.name,
-                "policy_key": getattr(pol, "key", None),  # harmless if absent
+
+                "sample_id": sample.get("id"),  
+                "id": pair_id,
+                "pair_id": pair_id,
+                "claim_id": claim_id,
+                "evidence_id": evidence_id,
+                "row_id": self._row_id(sample.get("id"), policy.name, split),
+
+
+                "policy_name": policy.name,
+                "policy_key": getattr(policy, "key", None),  # harmless if absent
                 "verdict": verdict.value,
                 "effectiveness": float(eff),
-                # axes
-                "energy": float(axes.get("energy")),
-                "explained": float(axes.get("explained")),
-                "participation_ratio": float(axes.get("participation_ratio")),
-                "sensitivity": float(axes.get("sensitivity")),
-                "alignment": float(axes.get("alignment")),
-                "sim_margin": float(axes.get("sim_margin")),
-                "tau_accept": float(tau) if tau is not None else None,
-                # lightweight metadata
-                "embedding_info": embedding_info,
+
+                # a few extra geometry fields (high-value)
+                "effective_rank": int(getattr(g, "effective_rank", 0)),
+                "used_count": int(getattr(g, "used_count", 0)),
+                "sigma1_ratio": float(getattr(g, "sigma1_ratio", 0.0)),
+                "sigma2_ratio": float(getattr(g, "sigma2_ratio", 0.0)),
+                "entropy_rank": float(getattr(g, "entropy_rank", 0.0)),
+                "sim_top1": float(getattr(g, "sim_top1", 0.0)),
+                "sim_top2": float(getattr(g, "sim_top2", 0.0)),
+
+                "embedding_backend": embedding_info.get("embedding_backend"),
+                "claim_dim": embedding_info.get("claim_dim"),
+                "evidence_count": embedding_info.get("evidence_count"),
+
+                # keep full nested structure for later deep dives
                 "energy_result": base.to_dict(),
             })
         return rows
@@ -398,6 +438,7 @@ def main():
     ap.add_argument("--out_report", type=Path, required=True)
     ap.add_argument("--out_pos_scored", type=Path, required=True)
     ap.add_argument("--out_neg_scored", type=Path, required=True)
+    ap.add_argument("--out_duckdb", type=Path, default=None, help="Optional: build a DuckDB DB in the run folder.")
     ap.add_argument("--plot_png", type=Path, default=None)
     ap.add_argument("--gap_width", type=float, default=0.1, help="Width of the ambiguity band as a fraction of tau_energy (default: 0.1 for 10%)")  
 

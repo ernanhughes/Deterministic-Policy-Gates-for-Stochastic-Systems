@@ -160,6 +160,17 @@ function Run-One($MODE) {
     $posPol = "$OUTDIR\pos_$MODE.policies.jsonl"
     $negPol = "$OUTDIR\neg_$MODE.policies.jsonl"
     $plot   = "$OUTDIR\$MODE.png"
+    $duckdb = "$OUTDIR\certum_results.duckdb"
+
+     Write-Host ""
+     Write-Host "Running mode: $MODE"
+     Write-Host "Report: $report"
+     Write-Host "Positives scored: $pos"
+     Write-Host "Negatives scored: $neg"
+     Write-Host "Pos policies: $posPol"
+     Write-Host "Neg policies: $negPol"
+     Write-Host "Plot: $plot"
+     Write-Host "DuckDB: $duckdb"   
 
     py -m certum.orchestration.runner `
         --kind $CFG.kind `
@@ -179,6 +190,7 @@ function Run-One($MODE) {
         --out_report $report `
         --out_pos_scored $pos `
         --out_neg_scored $neg `
+        --out_duckdb $duckdb `
         --plot_png $plot `
         --gap_width $GLOBAL.GAP_WIDTH 
 }

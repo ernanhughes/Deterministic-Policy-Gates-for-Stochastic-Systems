@@ -43,7 +43,7 @@ class PolicyLike:
     tau_accept: float | None = None
     tau_review: float | None = None
     pr_threshold: float | None = None
-    sensitivity_threshold: float | None = Hey Cortana
+    sensitivity_threshold: float | None
     hard_negative_gap: float = 0.0
 
     @property
