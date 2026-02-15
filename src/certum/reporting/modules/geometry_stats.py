@@ -5,6 +5,8 @@ for Certum reporting.
 
 import numpy as np
 
+from certum.utils.safe_utils import safe_std
+
 # ============================================================
 # Safe extractor
 # ============================================================
@@ -32,7 +34,7 @@ def correlation(x, y):
         return None
     if len(x) != len(y):
         return None
-    if np.std(x) < 1e-12 or np.std(y) < 1e-12:
+    if safe_std(x) < 1e-12 or safe_std(y) < 1e-12:
         return None
     return float(np.corrcoef(x, y)[0, 1])
 
@@ -79,7 +81,7 @@ def hard_negative_gap_distribution(rows):
 
     return {
         "mean": float(np.mean(gaps)),
-        "std": float(np.std(gaps)),
+        "std": float(safe_std(gaps)),
         "min": float(np.min(gaps)),
         "max": float(np.max(gaps)),
     }
@@ -137,7 +139,7 @@ def hard_negative_gap_per_row(deranged_rows, hard_rows):
 
     return {
         "mean": float(np.mean(gaps)),
-        "std": float(np.std(gaps)),
+        "std": float(safe_std(gaps)),
         "p90": float(np.percentile(gaps, 90)),
         "positive_fraction": float(np.mean(gaps > 0)),
         "n": len(gaps)

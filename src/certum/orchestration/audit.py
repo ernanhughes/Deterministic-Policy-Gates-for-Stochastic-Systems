@@ -5,6 +5,7 @@ from typing import Dict, List
 import numpy as np
 
 from certum.custom_types import EvaluationResult, Verdict
+from certum.utils.safe_utils import safe_std
 
 
 class AuditLogger:
@@ -32,7 +33,7 @@ class AuditLogger:
             },
             "energy_stats": {
                 "mean": float(np.mean(energies)),
-                "std": float(np.std(energies)),
+                "std": float(safe_std(energies)),
                 "p50": float(np.percentile(energies, 50)),
                 "p90": float(np.percentile(energies, 90))
             },

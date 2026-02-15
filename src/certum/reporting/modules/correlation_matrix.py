@@ -4,6 +4,8 @@ Correlation matrix computation and axis collapse detection.
 
 import numpy as np
 
+from certum.utils.safe_utils import safe_std
+
 
 def safe_extract(rows, path):
     vals = []
@@ -63,7 +65,7 @@ def correlation_matrix(rows):
         if len(arr) == 0:
             continue
 
-        if np.std(arr) < 1e-8:
+        if safe_std(arr) < 1e-8:
             dropped.append(k)
             continue
 

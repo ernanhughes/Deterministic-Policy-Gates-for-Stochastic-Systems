@@ -12,12 +12,17 @@ $env:TRANSFORMERS_VERBOSITY = "error"
 $gitHash = (git rev-parse HEAD)
 
 $GLOBAL = @{
-    MODEL     = "sentence-transformers/all-MiniLM-L6-v2"
+    # MODEL     = "sentence-transformers/all-MiniLM-L6-v2"
+    MODEL     = "BAAI/bge-large-en-v1.5"
+    # MODEL     = "intfloat/e5-large-v2"
+    # MODEL     = "nlpaueb/legal-bert-base-uncased"
+    # MODEL     = "sentence-transformers/msmarco-distilbert-base-v4"
+    
     EMBEDDB   = "E:\data\certum_embeddings.db"
     REGIME    = "standard"
     FAR       = "0.02"
     CALFRAC   = "0.5"
-    N         = "10000"
+    N         = "100"
     SEED      = "1337"
     GAP_WIDTH = "0.3"
 }

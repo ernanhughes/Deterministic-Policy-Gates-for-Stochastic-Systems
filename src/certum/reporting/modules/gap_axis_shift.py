@@ -1,5 +1,7 @@
 import numpy as np
 
+from certum.utils.safe_utils import safe_std
+
 
 def extract_axis(rows, axis_name):
     values = []
@@ -23,7 +25,7 @@ def correlation_with_correctness(rows, axis_name):
     vals, labels = extract_axis(rows, axis_name)
     if len(vals) != len(labels):
         return None
-    if np.std(vals) < 1e-12 or np.std(labels) < 1e-12:
+    if safe_std(vals, 0.0) < 1e-12 or safe_std(labels, 0.0) < 1e-12:
         return None
     if len(vals) < 5 or len(labels) == 0 or labels.mean() == 0:
         return None

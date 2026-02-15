@@ -8,6 +8,7 @@ import numpy as np
 from certum.gate import VerifiabilityGate
 from certum.geometry.claim_evidence import ClaimEvidenceGeometry
 from certum.protocols.embedder import Embedder
+from certum.utils.safe_utils import safe_std
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +115,7 @@ class AdaptiveCalibrator:
             neg_energies_hard,
         )
 
-        std_ref = float(np.std(neg_energies_deranged))
+        std_ref = float(safe_std(neg_energies_deranged))
         if std_ref < 1e-6:
             hard_negative_gap_norm = 0.0
         else:

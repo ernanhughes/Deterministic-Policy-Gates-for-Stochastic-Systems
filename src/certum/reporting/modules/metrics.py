@@ -6,6 +6,8 @@ Research-grade metrics computation for Certum reporting.
 import numpy as np
 from sklearn.metrics import roc_auc_score
 
+from certum.utils.safe_utils import safe_std
+
 # ============================================================
 # Basic Extraction
 # ============================================================
@@ -73,7 +75,7 @@ def summarize_distribution(values: np.ndarray):
 
     return {
         "mean": float(np.mean(values)),
-        "std": float(np.std(values)),
+        "std": float(safe_std(values)),
         "min": float(np.min(values)),
         "max": float(np.max(values)),
         "p10": float(np.percentile(values, 10)),
