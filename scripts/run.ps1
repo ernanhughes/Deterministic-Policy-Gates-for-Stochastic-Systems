@@ -12,8 +12,8 @@ $env:TRANSFORMERS_VERBOSITY = "error"
 $gitHash = (git rev-parse HEAD)
 
 $GLOBAL = @{
-    # MODEL     = "sentence-transformers/all-MiniLM-L6-v2"
-    MODEL     = "BAAI/bge-large-en-v1.5"
+    MODEL     = "sentence-transformers/all-MiniLM-L6-v2"
+    # MODEL     = "BAAI/bge-large-en-v1.5"
     # MODEL     = "intfloat/e5-large-v2"
     # MODEL     = "nlpaueb/legal-bert-base-uncased"
     # MODEL     = "sentence-transformers/msmarco-distilbert-base-v4"

@@ -9,12 +9,6 @@ from pathlib import Path
 
 import numpy as np
 
-from certum.embedding.hf_embedder import HFEmbedder
-from certum.embedding.sqlite_embedding_backend import SQLiteEmbeddingBackend
-from certum.geometry.claim_evidence import ClaimEvidenceGeometry
-from certum.geometry.nli_wrapper import EntailmentModel
-from certum.geometry.sentence_support import SentenceSupportAnalyzer
-from certum.orchestration.summarization_runner import SummarizationRunner
 
 
 from .experiments import run_ablation, run_experiment
