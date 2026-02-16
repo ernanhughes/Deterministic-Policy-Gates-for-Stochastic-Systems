@@ -241,10 +241,7 @@ class ClaimEvidenceGeometry:
                 np.array([]),
             )
 
-        sims = evidence_vecs @ claim_vec
-        k = min(self.top_k, evidence_vecs.shape[0])
-        idx = np.argsort(-sims)[:k]
-        E_topk = evidence_vecs[idx]
+        E_topk = evidence_vecs
 
         try:
             _, S, Vt = svd(E_topk, full_matrices=False)

@@ -268,11 +268,41 @@ class CertumRunner:
     # -----------------------------------------------------
 
     def _ensure_vectors(self, samples, embedder):
-        for s in samples:
+        """
+        Efficient batched embedding with progress.
+        """
+
+        logger.info("Preparing embeddings...")
+
+        # ---------------------------
+        # 1️⃣ Claims
+        # ---------------------------
+
+        claims_to_embed = [
+            s["claim"]
+            for s in samples
+            if "claim_vec" not in s
+        ]
+
+        if claims_to_embed:
+            logger.info(f"Embedding {len(claims_to_embed)} claims...")
+            claim_vecs = embedder.embed(claims_to_embed)
+
+            idx = 0
+            for s in samples:
+                if "claim_vec" not in s:
+                    s["claim_vec"] = claim_vecs[idx]
+                    idx += 1
+
+        # ---------------------------
+        # 2️⃣ Evidence
+        # ---------------------------
+
+        for s in tqdm(samples, desc="Embedding evidence", unit="sample"):
             if "evidence_vecs" not in s or s["evidence_vecs"] is None:
                 s["evidence_vecs"] = embedder.embed(s["evidence"])
-            if "claim_vec" not in s:
-                s["claim_vec"] = embedder.embed([s["claim"]])[0]
+
+        logger.info("All embeddings prepared.")
 
     def _write_policy_rows(self, path: Path, rows: list[dict]) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)

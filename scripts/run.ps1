@@ -22,7 +22,7 @@ $GLOBAL = @{
     REGIME    = "standard"
     FAR       = "0.02"
     CALFRAC   = "0.5"
-    N         = "100"
+    N         = "1000"
     SEED      = "1337"
     GAP_WIDTH = "0.3"
 }
@@ -56,7 +56,7 @@ $DATASETS = @{
     scifact = @{
         data_source = "scifact"
         kind     = "jsonl"
-        data     = "E:\data\scifact_dev.jsonl"
+        data     = "E:\data\scifact_dev_rationale.jsonl"
         cache_db = "E:\data\certum_cache.db"
     }
 

@@ -4,8 +4,11 @@
 *.png
 *.zip
 *.md
+*.csv
 *.duckdb*
+*.db
 
+thedatasets/
 datasets/
 
 # Byte-compiled / optimized / DLL files

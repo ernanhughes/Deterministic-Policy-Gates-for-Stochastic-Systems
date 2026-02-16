@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 
+from certum.geometry.support_types import SupportDiagnostics
 from certum.policy.decision_trace import DecisionTrace
 
 
@@ -121,9 +122,11 @@ class EvaluationResult:
     robustness_probe: Optional[List[float]] = None  # Energy under param variations
     difficulty_value: Optional[float] = 0.0
     difficulty_bucket: Optional[str] = None
+    support_diagnostics: Optional[SupportDiagnostics] = None
+    label: Optional[int] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        data = {
             "meta": {
                 "run_id": self.run_id,
                 "split": self.split,
@@ -131,7 +134,6 @@ class EvaluationResult:
             },
             "claim": self.claim,
             "evidence": self.evidence,
-            "energy": self.energy_result.to_dict(),
             "difficulty": {
                 "value": self.difficulty_value,
                 "bucket": self.difficulty_bucket,
@@ -139,13 +141,28 @@ class EvaluationResult:
             "effectiveness": self.effectiveness,
             "embedding": self.embedding_info,
             "decision": {
-                "verdict": self.verdict.value,
-                "trace": self.decision_trace.to_dict(),
+                "verdict": self.verdict.value if self.verdict else None,
             },
             "stability": {
-                "is_stable": self.energy_result.is_stable(),
                 "probe_variance": float(np.var(self.robustness_probe))
                 if self.robustness_probe
                 else None,
             },
+            "label": self.label
         }
+        
+
+        if self.energy_result is not None:
+            data["energy"] = self.energy_result.to_dict()
+            data["is_stable"] = self.energy_result.is_stable() 
+
+        if self.support_diagnostics is not None:
+            data["support"] = self.support_diagnostics.to_dict()
+
+        if self.decision_trace is not None:
+            data["decision"] = {
+                "verdict": self.verdict.value if self.verdict else None,
+            }
+
+        return data
+

@@ -7,6 +7,7 @@ import numpy as np
 
 from certum.policy.energy_only import EnergyOnlyPolicy
 from certum.policy.policy import AdaptivePolicy
+from certum.policy.soft_weighted import SoftWeightedPolicy
 from certum.reporting.build_duckdb import build_duckdb_for_run
 from certum.reporting.modules.auc import auc_from_curve
 from certum.reporting.modules.boundary import dominates
@@ -29,12 +30,11 @@ from certum.reporting.modules.metrics import (compute_auc, compute_tpr_at_far,
                                               summarize_geometry,
                                               summarize_verdicts)
 from certum.reporting.modules.policy_comparison import sweep_policy_curve
+from certum.reporting.modules.residual_analysis import residual_axis_test
+from certum.reporting.modules.residual_axis_test import residual_axis_auc
 from certum.reporting.modules.scatter_plots import scatter_plot
 from certum.reporting.policy_sweep_report import main as policy_sweep_main
 from certum.reporting.validate_gate_artifacts import validate_run_directory
-from certum.policy.soft_weighted import SoftWeightedPolicy
-from certum.reporting.modules.residual_axis_test import residual_axis_auc
-from certum.reporting.modules.residual_analysis import residual_axis_test
 
 
 def main():

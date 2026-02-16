@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def safe_mean(x):
     x = np.asarray(x)
     return float(np.mean(x)) if len(x) > 0 else None

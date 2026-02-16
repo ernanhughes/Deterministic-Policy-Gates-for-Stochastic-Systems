@@ -17,7 +17,6 @@ import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score
 
-
 # -----------------------------------------------------
 # Utilities
 # -----------------------------------------------------
