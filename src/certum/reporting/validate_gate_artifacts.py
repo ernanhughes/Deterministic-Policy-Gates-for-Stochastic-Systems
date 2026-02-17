@@ -76,7 +76,7 @@ def validate_run_directory(run_dir: Path):
 
     pos_files = list(run_dir.glob("pos_*.jsonl"))
     neg_files = list(run_dir.glob("neg_*.jsonl"))
-    cal_files = list(run_dir.glob("*negcal*.json"))
+    cal_files = list(run_dir.glob("*report*.json"))
 
     if not pos_files:
         raise ValueError("No pos_*.jsonl files found.")

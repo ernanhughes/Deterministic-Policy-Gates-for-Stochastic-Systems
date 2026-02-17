@@ -24,6 +24,8 @@ from certum.policy.policy import AdaptivePolicy
 from certum.reporting.modules.plot import plot_distributions
 from certum.utils.id_utils import compute_ids
 from certum.utils.math_utils import accept_margin_ratio
+from sklearn.metrics import roc_auc_score
+
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +68,7 @@ class CertumRunner:
         out_pos_scored: Path,
         out_neg_scored: Path,
         out_pos_policies: Optional[Path] = None,
-        out_neg_policies: Optional[Path] = None,        
+        out_neg_policies: Optional[Path] = None,
         neg_offset: Optional[int] = None,
         out_duckdb: Optional[Path] = None,
         plot_png: Optional[Path] = None,
@@ -402,6 +404,45 @@ class CertumRunner:
             })
         return rows
 
+    def _compute_policy_metrics(self, pos_results, neg_results):
+
+        def verdicts(results):
+            return np.array([r.verdict.value for r in results])
+
+        pos_v = verdicts(pos_results)
+        neg_v = verdicts(neg_results)
+
+        tpr = float(np.mean(pos_v == "ACCEPT"))
+        far = float(np.mean(neg_v == "ACCEPT"))
+
+        return {
+            "tpr": tpr,
+            "far": far,
+        }
+
+    def _compute_energy_metrics(self, pos_results, neg_results):
+
+        pos_e = np.array([r.energy_result.energy for r in pos_results])
+        neg_e = np.array([r.energy_result.energy for r in neg_results])
+
+        y = np.concatenate([np.zeros(len(pos_e)), np.ones(len(neg_e))])
+        scores = np.concatenate([pos_e, neg_e])
+
+        auc = roc_auc_score(y, scores)
+
+        return {
+            "mean_pos_energy": float(np.mean(pos_e)),
+            "mean_neg_energy": float(np.mean(neg_e)),
+            "median_pos_energy": float(np.median(pos_e)),
+            "median_neg_energy": float(np.median(neg_e)),
+            "energy_gap_mean": float(np.mean(neg_e) - np.mean(pos_e)),
+            "auc_energy": float(auc),
+            "energy_histogram_stats": {
+                "pos_std": float(np.std(pos_e)),
+                "neg_std": float(np.std(neg_e)),
+            }
+        }
+
     def _write_outputs(
         self,
         run_id,
@@ -427,18 +468,27 @@ class CertumRunner:
         pos_summary = AuditLogger.generate_summary_report(pos_results)
         neg_summary = AuditLogger.generate_summary_report(neg_results)
 
+        energy_metrics = self._compute_energy_metrics(pos_results, neg_results)
+        policy_metrics = self._compute_policy_metrics(pos_results, neg_results)
+
         report = {
             "run_id": run_id,
             "model": model,
-            "far": far,
+            "far_target": far,
             "neg_mode": neg_mode,
             "seed": seed,
             "cal_frac": cal_frac,
             "n_total": n,
             "load_stats": load_stats,
+
             "calibration": sweep_results,
-            "positive": pos_summary,
-            "negative": neg_summary,
+
+            "energy_metrics": energy_metrics,
+            "policy_metrics": policy_metrics,
+
+            "positive_summary": pos_summary,
+            "negative_summary": neg_summary,
+
             "neg_meta": neg_meta,
         }
 

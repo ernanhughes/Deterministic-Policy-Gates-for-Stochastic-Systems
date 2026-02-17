@@ -22,7 +22,7 @@ $GLOBAL = @{
     REGIME    = "standard"
     FAR       = "0.02"
     CALFRAC   = "0.5"
-    N         = "1000"
+    N         = "2000"
     SEED      = "1337"
     GAP_WIDTH = "0.3"
 }
@@ -49,7 +49,7 @@ $DATASETS = @{
     casehold = @{
         data_source = "casehold"
         kind     = "jsonl"
-        data     = "E:\data\casehold_pos.jsonl"
+        data     = "E:\data\casehold_claims.jsonl"
         cache_db = "E:\data\certum_cache.db"
     }
 
@@ -166,7 +166,7 @@ $meta | ConvertTo-Json -Depth 6 | Out-File -Encoding UTF8 $MetaFile
 
 function Run-One($MODE) {
 
-    $report = "$OUTDIR\negcal_$MODE.json"
+    $report = "$OUTDIR\report.json"
     $pos    = "$OUTDIR\pos_$MODE.jsonl"
     $neg    = "$OUTDIR\neg_$MODE.jsonl"
     $posPol = "$OUTDIR\pos_$MODE.policies.jsonl"
